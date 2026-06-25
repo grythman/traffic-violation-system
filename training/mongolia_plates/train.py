@@ -127,8 +127,7 @@ def train(a: argparse.Namespace, data_yaml: str) -> Path:
     except ImportError:
         sys.exit("Install ultralytics first: pip install ultralytics")
 
-    # Fix: Roboflow datasets often have inconsistent relative paths in data.yaml.
-    # We normalize everything to absolute paths with forward slashes for cross-platform compatibility.
+    # Fix: Aggressively force absolute paths in data.yaml to fix FileNotFoundError.
     try:
         import yaml
         yaml_path = Path(data_yaml).resolve()
@@ -136,44 +135,45 @@ def train(a: argparse.Namespace, data_yaml: str) -> Path:
         with open(yaml_path, "r", encoding="utf-8") as f:
             data_cfg = yaml.safe_load(f)
         
-        # 1. Set the base path to absolute (using forward slashes for Windows compatibility in YOLO)
-        data_cfg["path"] = str(dataset_root).replace("\\", "/")
+        # 1. We'll set 'path' to empty and make train/val/test absolute.
+        # This is the most robust way for YOLO to find files on Windows.
+        data_cfg["path"] = "" 
         
-        # 2. Clean up train/val/test paths and handle missing folders
         existing_subdirs = [d.name for d in dataset_root.iterdir() if d.is_dir()]
+        print(f"      Dataset root: {dataset_root}")
         print(f"      Found subdirectories: {existing_subdirs}")
         
-        # Priority mapping: try to find these folders in order
         for key in ["train", "val", "test"]:
-            if key in data_cfg:
-                p = str(data_cfg[key]).replace("\\", "/")
-                while p.startswith("../") or p.startswith("./"):
-                    p = p.split("/", 1)[1] if "/" in p else ""
-                
-                # Check if the defined path exists
-                if not (dataset_root / p).exists():
-                    # Fallback logic:
-                    # 1. Try to find any directory that matches the key (e.g. 'valid' instead of 'valid/images')
-                    # 2. If it's 'val' or 'test' and missing, use 'train' as fallback to prevent crash
-                    potential_match = next((d for d in existing_subdirs if key in d or d.startswith(key[:3])), None)
-                    if potential_match:
-                        p = potential_match
-                    elif key in ["val", "test"] and "train" in existing_subdirs:
-                        print(f"      Warning: {key} folder not found, using 'train' as fallback.")
-                        p = "train"
-                    elif "train" not in existing_subdirs and existing_subdirs:
-                        # If even 'train' is missing, use the first available directory
-                        p = existing_subdirs[0]
-                
-                data_cfg[key] = p
+            # Even if the key isn't in data.yaml, YOLO might look for it.
+            # We'll ensure train and val at least exist.
+            p = str(data_cfg.get(key, "")).replace("\\", "/")
+            while p.startswith("../") or p.startswith("./"):
+                p = p.split("/", 1)[1] if "/" in p else ""
+            
+            # Find the best existing directory for this key
+            target_dir = dataset_root / p
+            if not p or not target_dir.exists():
+                # Fallback search
+                potential = next((d for d in existing_subdirs if key in d or d.startswith(key[:3])), None)
+                if potential:
+                    target_dir = dataset_root / potential
+                elif key in ["val", "test"] and "train" in existing_subdirs:
+                    target_dir = dataset_root / "train"
+                elif "train" in existing_subdirs:
+                    target_dir = dataset_root / "train"
+                elif existing_subdirs:
+                    target_dir = dataset_root / existing_subdirs[0]
+            
+            # Force absolute path with forward slashes
+            data_cfg[key] = str(target_dir.resolve()).replace("\\", "/")
         
         with open(yaml_path, "w", encoding="utf-8") as f:
             yaml.dump(data_cfg, f)
         
-        print(f"      Normalized data.yaml for Windows/Linux compatibility:")
-        print(f"        path:  {data_cfg['path']}")
-        print(f"        train: {data_cfg.get('train')}")
-        print(f"        val:   {data_cfg.get('val')}")
+        print(f"      Final data.yaml configuration:")
+        for k in ["path", "train", "val", "test"]:
+            print(f"        {k}: {data_cfg.get(k)}")
+            
     except Exception as e:
         print(f"      Warning: Could not update data.yaml paths: {e}")
 
