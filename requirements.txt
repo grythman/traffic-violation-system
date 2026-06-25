@@ -1,0 +1,23 @@
+# --- Web framework ---
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+pydantic==2.7.4
+pydantic-settings==2.3.4
+
+# --- Database ---
+SQLAlchemy==2.0.31
+psycopg2-binary==2.9.9
+
+# --- ML / Computer Vision ---
+ultralytics==8.2.48
+easyocr==1.7.1
+# Pin torch CPU wheels for reproducible Docker builds.
+torch==2.3.1
+torchvision==0.18.1
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+Pillow==10.3.0
+
+# --- HTTP / misc ---
+requests==2.32.3
+python-multipart==0.0.9

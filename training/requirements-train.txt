@@ -1,0 +1,9 @@
+# Dependencies for training a custom YOLOv8 plate detector.
+# Install with:  pip install -r training/requirements-train.txt
+#
+# Note: install a CUDA-enabled torch build for GPU training. See
+# https://pytorch.org/get-started/locally/ for the right command for your CUDA
+# version. The plain `ultralytics` install pulls a CPU torch by default.
+
+ultralytics>=8.2.0
+roboflow>=1.1.30

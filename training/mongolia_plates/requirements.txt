@@ -1,0 +1,8 @@
+# Dependencies for training the ed-bw6q4/mongolia-plates dataset.
+#   pip install -r requirements.txt
+#
+# For GPU training, install a CUDA-enabled torch build first:
+#   https://pytorch.org/get-started/locally/
+ultralytics>=8.2.0
+roboflow>=1.1.30
+PyYAML>=6.0
