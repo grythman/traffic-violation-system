@@ -139,21 +139,31 @@ def train(a: argparse.Namespace, data_yaml: str) -> Path:
         # 1. Set the base path to absolute (using forward slashes for Windows compatibility in YOLO)
         data_cfg["path"] = str(dataset_root).replace("\\", "/")
         
-        # 2. Clean up train/val/test paths.
+        # 2. Clean up train/val/test paths and handle missing folders
+        existing_subdirs = [d.name for d in dataset_root.iterdir() if d.is_dir()]
+        print(f"      Found subdirectories: {existing_subdirs}")
+        
+        # Priority mapping: try to find these folders in order
         for key in ["train", "val", "test"]:
             if key in data_cfg:
                 p = str(data_cfg[key]).replace("\\", "/")
-                # Strip leading relative markers
                 while p.startswith("../") or p.startswith("./"):
                     p = p.split("/", 1)[1] if "/" in p else ""
                 
-                # Verify if the path exists, if not, try to find the correct images folder
-                full_p = dataset_root / p
-                if not full_p.exists():
-                    # Fallback: if 'valid/images' doesn't exist, maybe it's just 'valid'
-                    alt_p = p.split("/")[0] if "/" in p else p
-                    if (dataset_root / alt_p).exists():
-                        p = alt_p
+                # Check if the defined path exists
+                if not (dataset_root / p).exists():
+                    # Fallback logic:
+                    # 1. Try to find any directory that matches the key (e.g. 'valid' instead of 'valid/images')
+                    # 2. If it's 'val' or 'test' and missing, use 'train' as fallback to prevent crash
+                    potential_match = next((d for d in existing_subdirs if key in d or d.startswith(key[:3])), None)
+                    if potential_match:
+                        p = potential_match
+                    elif key in ["val", "test"] and "train" in existing_subdirs:
+                        print(f"      Warning: {key} folder not found, using 'train' as fallback.")
+                        p = "train"
+                    elif "train" not in existing_subdirs and existing_subdirs:
+                        # If even 'train' is missing, use the first available directory
+                        p = existing_subdirs[0]
                 
                 data_cfg[key] = p
         
