@@ -127,21 +127,38 @@ def train(a: argparse.Namespace, data_yaml: str) -> Path:
     except ImportError:
         sys.exit("Install ultralytics first: pip install ultralytics")
 
-    # Fix: Roboflow sometimes uses relative paths in data.yaml which can break
-    # when the training process changes the working directory.
-    # We force the 'path' in data.yaml to be the absolute parent of the yaml file.
+    # Fix: Roboflow datasets often have inconsistent relative paths in data.yaml.
+    # We normalize everything to absolute paths to prevent FileNotFoundError.
     try:
         import yaml
         yaml_path = Path(data_yaml).resolve()
+        dataset_root = yaml_path.parent
         with open(yaml_path, "r", encoding="utf-8") as f:
             data_cfg = yaml.safe_load(f)
         
-        # Set absolute path to the dataset root
-        data_cfg["path"] = str(yaml_path.parent)
+        # 1. Set the base path to absolute
+        data_cfg["path"] = str(dataset_root)
+        
+        # 2. Clean up train/val/test paths. 
+        # If they are relative like '../valid/images', they should be 'valid/images' 
+        # relative to the 'path' we just set.
+        for key in ["train", "val", "test"]:
+            if key in data_cfg:
+                p = data_cfg[key]
+                # If it starts with ../ or ./, make it relative to the root
+                if p.startswith(".."):
+                    # e.g. ../valid/images -> valid/images
+                    data_cfg[key] = p.lstrip("./").lstrip("../")
+                elif p.startswith("."):
+                    data_cfg[key] = p.lstrip("./")
         
         with open(yaml_path, "w", encoding="utf-8") as f:
             yaml.dump(data_cfg, f)
-        print(f"      Updated {yaml_path.name} with absolute path: {data_cfg['path']}")
+        
+        print(f"      Normalized data.yaml:")
+        print(f"        path:  {data_cfg['path']}")
+        print(f"        train: {data_cfg.get('train')}")
+        print(f"        val:   {data_cfg.get('val')}")
     except Exception as e:
         print(f"      Warning: Could not update data.yaml paths: {e}")
 
