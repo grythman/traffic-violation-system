@@ -127,10 +127,28 @@ def train(a: argparse.Namespace, data_yaml: str) -> Path:
     except ImportError:
         sys.exit("Install ultralytics first: pip install ultralytics")
 
+    # Fix: Roboflow sometimes uses relative paths in data.yaml which can break
+    # when the training process changes the working directory.
+    # We force the 'path' in data.yaml to be the absolute parent of the yaml file.
+    try:
+        import yaml
+        yaml_path = Path(data_yaml).resolve()
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            data_cfg = yaml.safe_load(f)
+        
+        # Set absolute path to the dataset root
+        data_cfg["path"] = str(yaml_path.parent)
+        
+        with open(yaml_path, "w", encoding="utf-8") as f:
+            yaml.dump(data_cfg, f)
+        print(f"      Updated {yaml_path.name} with absolute path: {data_cfg['path']}")
+    except Exception as e:
+        print(f"      Warning: Could not update data.yaml paths: {e}")
+
     print(f"[2/4] Training {a.model} for {a.epochs} epochs ...")
     model = YOLO(a.model)
     results = model.train(
-        data=data_yaml, epochs=a.epochs, imgsz=a.imgsz, batch=a.batch,
+        data=str(yaml_path), epochs=a.epochs, imgsz=a.imgsz, batch=a.batch,
         device=a.device, patience=a.patience, name=a.name, seed=a.seed, plots=True,
     )
     save_dir = Path(getattr(results, "save_dir", model.trainer.save_dir))
