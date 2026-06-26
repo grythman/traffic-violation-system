@@ -93,8 +93,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", default="yolov8n.pt",
                         help="Base weights to fine-tune (e.g. yolov8n.pt, yolo11n.pt).")
     parser.add_argument("--epochs", type=int, default=100, help="Training epochs.")
-    parser.add_argument("--imgsz", type=int, default=640, help="Training image size.")
-    parser.add_argument("--batch", type=int, default=16,
+    parser.add_argument("--imgsz", type=int, default=320, help="Training image size.")
+    parser.add_argument("--batch", type=int, default=64,
                         help="Batch size (use -1 for AutoBatch).")
     parser.add_argument("--device", default=None,
                         help="CUDA device id(s) e.g. '0' or 'cpu'. Auto if omitted.")
@@ -179,6 +179,8 @@ def train(args: argparse.Namespace, data_yaml: str) -> Path:
         name=args.name,
         seed=args.seed,
         plots=True,
+        cache=True,        # Нэмэх: Дискнээс зураг унших гацалтыг арилгана
+        workers=2,         # Нэмэх: Colab CPU-ийн ачааллыг оновчтой болгоно
     )
 
     save_dir = Path(results.save_dir) if hasattr(results, "save_dir") else \
