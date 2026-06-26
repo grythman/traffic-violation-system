@@ -43,9 +43,9 @@ except ImportError:  # pragma: no cover
 # CONFIG  --  EDIT THESE PLACEHOLDERS
 # ============================================================================
 # --- Camera (Dahua ITC352) RTSP connection ---------------------------------
-CAMERA_IP = "192.168.1.108"        # <-- your camera's IP address
+CAMERA_IP = "192.168.12.215"        # <-- your camera's IP address
 CAMERA_USER = "admin"              # <-- your camera username
-CAMERA_PASSWORD = "YOUR_PASSWORD"  # <-- your camera password
+CAMERA_PASSWORD = "cctv2026" # <-- your camera password
 CAMERA_RTSP_PORT = 554
 CAMERA_CHANNEL = 1
 # subtype 0 = main (high-res) stream, 1 = sub (low-res) stream

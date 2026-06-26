@@ -30,7 +30,7 @@ pip install -r training/requirements-train.txt
 3. Орчны хувьсагч болгон тохируулна:
 
 ```bash
-export ROBOFLOW_API_KEY="таны_түлхүүр"
+export ROBOFLOW_API_KEY="N"
 ```
 
 ## 2-р алхам: Датасет татаж сургах
