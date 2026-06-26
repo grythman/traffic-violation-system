@@ -94,8 +94,10 @@ def review_violation(
         decision=payload.decision,
         reviewed_by=payload.reviewed_by,
         review_notes=payload.review_notes,
+        # When omitted, crud applies the configured default amount/currency
+        # for the violation type — approval ALWAYS issues a linked fine.
         fine_amount=payload.fine_amount,
-        fine_currency=payload.fine_currency or "USD",
+        fine_currency=payload.fine_currency,
     )
     logger.info(
         "Violation %s reviewed by %s -> %s",

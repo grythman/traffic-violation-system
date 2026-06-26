@@ -23,6 +23,7 @@ from app.utils.image_loader import (
     load_image_from_base64,
     load_image_from_url,
 )
+from app.utils.plate_utils import is_valid_mn_plate
 
 logger = get_logger(__name__)
 
@@ -97,6 +98,22 @@ class AnalysisService:
         detected_vehicles: list[DetectedVehicle] = []
         best_plate: str | None = None
         best_plate_conf: float | None = None
+        best_plate_valid = False
+
+        def _consider(plate_text: str | None, plate_conf: float | None) -> None:
+            """Track the "primary" plate, preferring format-valid Mongolian
+            plates over higher-confidence but malformed reads."""
+            nonlocal best_plate, best_plate_conf, best_plate_valid
+            if not plate_text:
+                return
+            valid = is_valid_mn_plate(plate_text)
+            conf = plate_conf or 0.0
+            # Selection priority: (is_valid, confidence).
+            better = (valid, conf) > (best_plate_valid, best_plate_conf or 0.0)
+            if best_plate is None or better:
+                best_plate = plate_text
+                best_plate_conf = plate_conf
+                best_plate_valid = valid
 
         for det in detections:
             region = self._crop(image, det)
@@ -114,20 +131,14 @@ class AnalysisService:
                 )
             )
 
-            # Track the most confident plate as the "primary" one.
-            if plate_text and (
-                best_plate_conf is None or (plate_conf or 0) > best_plate_conf
-            ):
-                best_plate = plate_text
-                best_plate_conf = plate_conf
+            _consider(plate_text, plate_conf)
 
         # If no vehicle was detected, still attempt OCR on the full frame so a
         # plate-only crop image can be analysed.
         if not detections:
             plate_result = self._read_plate_for_region(image)
             if plate_result:
-                best_plate = plate_result.text
-                best_plate_conf = plate_result.confidence
+                _consider(plate_result.text, plate_result.confidence)
 
         # Evaluate the rule engine against the supplied metadata.
         rule_result = self._rules.evaluate(request.metadata)

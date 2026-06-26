@@ -36,6 +36,10 @@ services:
       # Optional custom plate detector (e.g. trained on Mongolian plates).
       # Drop the .pt into ./models on the host; it appears at /app/models inside.
       PLATE_MODEL_PATH: ${PLATE_MODEL_PATH:-}
+      # Custom character-level OCR model. Auto-detected at
+      # /app/models/mn_plate_ocr_yolo.pt; set explicitly to override.
+      MODELS_DIR: ${MODELS_DIR:-/app/models}
+      PLATE_OCR_MODEL_PATH: ${PLATE_OCR_MODEL_PATH:-}
       # Mongolian plates are Cyrillic: set OCR_LANGUAGES=mn,en for production.
       OCR_LANGUAGES: ${OCR_LANGUAGES:-en}
       OCR_ALLOWLIST: ${OCR_ALLOWLIST:-}

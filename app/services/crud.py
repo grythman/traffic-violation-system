@@ -9,10 +9,18 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.config import settings
 from app.core.enums import FineStatus, ViolationStatus, ViolationType
 from app.models.fine import Fine
 from app.models.vehicle import Vehicle
 from app.models.violation import Violation
+
+
+def _default_fine_amount(violation_type: ViolationType) -> float:
+    """Resolve the default fine amount for a violation type from settings."""
+    return settings.DEFAULT_FINE_AMOUNTS.get(
+        violation_type.value, settings.DEFAULT_FINE_AMOUNT_FALLBACK
+    )
 
 
 # --- Vehicles --------------------------------------------------------------
@@ -110,7 +118,7 @@ def apply_review_decision(
     reviewed_by: str,
     review_notes: str | None = None,
     fine_amount: float | None = None,
-    fine_currency: str = "USD",
+    fine_currency: str | None = None,
 ) -> Violation:
     """Apply a human operator's review decision.
 
@@ -122,15 +130,28 @@ def apply_review_decision(
     violation.review_notes = review_notes
     violation.reviewed_at = datetime.now(timezone.utc)
 
-    if decision == ViolationStatus.APPROVED and fine_amount is not None:
-        fine = Fine(
-            violation=violation,
-            amount=fine_amount,
-            currency=fine_currency,
-            status=FineStatus.ISSUED,
-            issued_by=reviewed_by,
+    # On approval, AUTOMATICALLY create the linked fine. The operator may
+    # supply an explicit amount; otherwise the configured default for the
+    # violation type is applied. This is the ONLY path that creates a fine.
+    if decision == ViolationStatus.APPROVED:
+        existing_fine = db.scalar(
+            select(Fine).where(Fine.violation_id == violation.id)
         )
-        db.add(fine)
+        if existing_fine is None:
+            amount = (
+                fine_amount
+                if fine_amount is not None
+                else _default_fine_amount(violation.violation_type)
+            )
+            currency = fine_currency or settings.DEFAULT_FINE_CURRENCY
+            fine = Fine(
+                violation=violation,
+                amount=amount,
+                currency=currency,
+                status=FineStatus.ISSUED,
+                issued_by=reviewed_by,
+            )
+            db.add(fine)
 
     db.commit()
     db.refresh(violation)

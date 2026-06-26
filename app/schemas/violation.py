@@ -48,6 +48,8 @@ class ViolationReviewRequest(BaseModel):
     reviewed_by: str = Field(..., max_length=128, examples=["operator_jane"])
     review_notes: str | None = Field(default=None, examples=["Clear evidence."])
 
-    # Optional fine details applied only when decision == approved.
-    fine_amount: float | None = Field(default=None, ge=0, examples=[150.0])
-    fine_currency: str | None = Field(default="USD", max_length=3)
+    # Optional fine details applied when decision == approved. When omitted,
+    # the configured default amount/currency for the violation type is used —
+    # approving a violation ALWAYS creates a linked fine.
+    fine_amount: float | None = Field(default=None, ge=0, examples=[50000.0])
+    fine_currency: str | None = Field(default=None, max_length=3, examples=["MNT"])

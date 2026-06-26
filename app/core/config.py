@@ -50,6 +50,20 @@ class Settings(BaseSettings):
     PLATE_MODEL_PATH: str = ""  # e.g. "/app/models/mn_plate_yolov8.pt"
     PLATE_CONFIDENCE_THRESHOLD: float = 0.30
 
+    # --- Custom character-level OCR detector (stage 3a, OPTIONAL) ----------
+    # A CUSTOM YOLO model trained on the ed-bw6q4/mongolia-plates dataset that
+    # detects each plate CHARACTER as its own box. When present, it replaces
+    # EasyOCR for Mongolian plates (far more accurate on Cyrillic).
+    #
+    # Resolution order at startup:
+    #   1. PLATE_OCR_MODEL_PATH if set and the file exists.
+    #   2. Otherwise auto-detect "<MODELS_DIR>/mn_plate_ocr_yolo.pt".
+    #   3. Otherwise fall back to EasyOCR.
+    MODELS_DIR: str = "models"  # mounted at /app/models inside the container
+    PLATE_OCR_MODEL_PATH: str = ""
+    PLATE_OCR_CONFIDENCE_THRESHOLD: float = 0.25
+    PLATE_OCR_IMGSZ: int = 640
+
     # --- OCR (stage 3) -----------------------------------------------------
     # EasyOCR languages. Mongolian plates use the Cyrillic alphabet, so use
     # ["mn"] or ["mn", "en"]. EasyOCR supports a "mn" Cyrillic model.
@@ -66,6 +80,22 @@ class Settings(BaseSettings):
     # --- Rule Engine -------------------------------------------------------
     # Tolerance (km/h) applied before flagging an over-speed violation.
     SPEED_TOLERANCE_KMH: float = 0.0
+
+    # --- Fines -------------------------------------------------------------
+    # Default monetary penalty applied (per violation_type) when a human
+    # operator APPROVES a violation without supplying an explicit amount.
+    # Keyed by ViolationType.value. Override via env as JSON, e.g.
+    #   DEFAULT_FINE_AMOUNTS='{"over_speeding": 50000, "red_light": 30000}'
+    DEFAULT_FINE_CURRENCY: str = "MNT"
+    DEFAULT_FINE_AMOUNTS: dict[str, float] = {
+        "over_speeding": 50000.0,
+        "red_light": 30000.0,
+        "no_helmet": 20000.0,
+        "wrong_way": 40000.0,
+        "other": 30000.0,
+    }
+    # Fallback when a violation_type has no specific entry above.
+    DEFAULT_FINE_AMOUNT_FALLBACK: float = 30000.0
 
     # --- HTTP fetch --------------------------------------------------------
     IMAGE_FETCH_TIMEOUT: int = 15  # seconds
